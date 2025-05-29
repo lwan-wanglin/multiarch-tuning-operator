@@ -18,8 +18,7 @@ resources:
   path: k8s.io/api/core/v1
   version: v1
 - api:
-    crdVersion: v1alpha1
-    namespaced: false
+    crdVersion: v1
   controller: true
   domain: openshift.io
   group: multiarch
@@ -30,8 +29,7 @@ resources:
     conversion: true
     webhookVersion: v1
 - api:
-    crdVersion: v1beta1
-    namespaced: false
+    crdVersion: v1
   domain: openshift.io
   group: multiarch
   kind: ClusterPodPlacementConfig
@@ -40,4 +38,13 @@ resources:
   webhooks:
     conversion: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: openshift.io
+  group: multiarch
+  kind: ENoExecEvent
+  path: github.com/openshift/multiarch-tuning-operator/apis/multiarch/v1beta1
+  version: v1beta1
 version: "3"
