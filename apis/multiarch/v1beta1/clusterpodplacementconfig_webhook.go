@@ -19,9 +19,11 @@ package v1beta1
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
@@ -35,6 +37,7 @@ func (c *ClusterPodPlacementConfig) SetupWebhookWithManager(mgr ctrl.Manager) er
 }
 
 type ClusterPodPlacementConfigValidator struct {
+	client.Client
 }
 
 func (v *ClusterPodPlacementConfigValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
@@ -46,6 +49,17 @@ func (v *ClusterPodPlacementConfigValidator) ValidateUpdate(ctx context.Context,
 }
 
 func (v *ClusterPodPlacementConfigValidator) ValidateDelete(ctx context.Context, obj runtime.Object) (warnings admission.Warnings, err error) {
+	cppc, ok := obj.(*ClusterPodPlacementConfig)
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("expected ClusterPodPlacementConfig but got %T", obj))
+	}
+	var ppcs PodPlacementConfigList
+	if err := v.Client.List(ctx, &ppcs); err != nil {
+		return nil, errors.New(fmt.Sprintf("unable to list PodPlacementConfigs: %w", err))
+	}
+	if len(ppcs.Items) > 0 {
+		return nil, errors.New(fmt.Sprintf("cannot delete ClusterPodPlacementConfig %q: %d PodPlacementConfig(s) still exist in the cluster", cppc.Name, len(ppcs.Items)))
+	}
 	return nil, nil
 }
 
