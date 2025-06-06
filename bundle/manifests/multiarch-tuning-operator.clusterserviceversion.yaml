@@ -21,13 +21,28 @@ metadata:
               ]
             }
           }
+        },
+        {
+          "apiVersion": "multiarch.openshift.io/v1beta1",
+          "kind": "PodPlacementConfig",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "multiarch-tuning-operator",
+              "app.kubernetes.io/instance": "podplacementconfig-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "podplacementconfig",
+              "app.kubernetes.io/part-of": "multiarch-tuning-operator"
+            },
+            "name": "podplacementconfig-sample"
+          },
+          "spec": null
         }
       ]
     capabilities: Seamless Upgrades
     categories: OpenShift Optional, Other
     console.openshift.io/disable-operand-delete: "false"
     containerImage: registry.ci.openshift.org/origin/multiarch-tuning-operator:main
-    createdAt: "2025-05-27T23:50:18Z"
+    createdAt: "2025-06-06T09:22:42Z"
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
@@ -78,6 +93,11 @@ spec:
       displayName: ENo Exec Event
       kind: ENoExecEvent
       name: enoexecevents.multiarch.openshift.io
+      version: v1beta1
+    - description: PodPlacementConfig is the Schema for the podplacementconfigs API
+      displayName: Pod Placement Config
+      kind: PodPlacementConfig
+      name: podplacementconfigs.multiarch.openshift.io
       version: v1beta1
   description: |
     The Multiarch Tuning Operator optimizes workload management within multi-architecture clusters and in
@@ -229,6 +249,7 @@ spec:
           resources:
           - clusterpodplacementconfigs
           - enoexecevents
+          - podplacementconfigs
           verbs:
           - create
           - delete
@@ -242,6 +263,7 @@ spec:
           resources:
           - clusterpodplacementconfigs/finalizers
           - enoexecevents/finalizers
+          - podplacementconfigs/finalizers
           verbs:
           - update
         - apiGroups:
@@ -249,6 +271,7 @@ spec:
           resources:
           - clusterpodplacementconfigs/status
           - enoexecevents/status
+          - podplacementconfigs/status
           verbs:
           - get
           - patch
@@ -505,3 +528,21 @@ spec:
     targetPort: 9443
     type: ValidatingAdmissionWebhook
     webhookPath: /validate-multiarch-openshift-io-v1beta1-clusterpodplacementconfig
+  - admissionReviewVersions:
+    - v1
+    deploymentName: webhook
+    failurePolicy: Fail
+    generateName: vpodplacementconfig.kb.io
+    rules:
+    - apiGroups:
+      - multiarch.openshift.io
+      apiVersions:
+      - v1beta1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - podplacementconfigs
+    sideEffects: None
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-multiarch-openshift-io-v1beta1-podplacementconfig
