@@ -397,6 +397,25 @@ var _ = Describe("Controllers/ClusterPodPlacementConfig/ClusterPodPlacementConfi
 				By("The pod has been deleted and the ClusterPodPlacementConfig should now be collected")
 				Eventually(framework.ValidateDeletion(k8sClient, ctx)).Should(Succeed(), "the ClusterPodPlacementConfig should be deleted")
 			})
+			It("should deny deletion if any PodPlacementConfig is deployed in the cluster", func() {
+				By("Create a PodPlacementConfig")
+				ppc := builder.NewPodPlacementConfig().
+					WithName("ppc").
+					WithNamespace("test-namespace").
+					WithPriority(common.Priority(50)).
+					Build()
+				defer k8sClient.Delete(ctx, ppc)
+				err := k8sClient.Create(ctx, ppc)
+				Expect(err).NotTo(HaveOccurred(), "The create PodPlacementConfig should succeed")
+				By("Try to delete ClusterPodPlacementConfig")
+				err = k8sClient.Delete(ctx, builder.NewClusterPodPlacementConfig().WithName(common.SingletonResourceObjectName).Build())
+				Expect(err).To(HaveOccurred(), "The deletion ClusterPodPlacementConfig should not be accepted")
+				By("Verify the error is 'invalid'")
+				Expect(errors.IsInvalid(err)).To(BeTrue(), "The deletion of ClusterPodPlacementConfig should not be accepted")
+				Expect(k8sClient.Delete(ctx, ppc)).To(Succeed(), "fail to delete ppc")
+				err = k8sClient.Delete(ctx, builder.NewClusterPodPlacementConfig().WithName(common.SingletonResourceObjectName).Build())
+				Expect(err).NotTo(HaveOccurred(), "failed to delete ClusterPodPlacementConfig", err)
+			})
 		})
 		Context("the ClusterPodPlacementConfig is deleted within 1s after creation", func() {
 			It("Should cleanup all finalizers", func() {

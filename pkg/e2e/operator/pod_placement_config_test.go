@@ -1,12 +1,14 @@
 package operator_test
 
 import (
+	"fmt"
 	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/openshift/multiarch-tuning-operator/apis/multiarch/v1beta1"
 
 	"github.com/openshift/multiarch-tuning-operator/pkg/e2e"
+	"github.com/openshift/multiarch-tuning-operator/pkg/testing/builder"
 	. "github.com/openshift/multiarch-tuning-operator/pkg/testing/builder"
 	"github.com/openshift/multiarch-tuning-operator/pkg/testing/framework"
 	"github.com/openshift/multiarch-tuning-operator/pkg/utils"
@@ -438,6 +441,88 @@ var _ = Describe("The Multiarch Tuning Operator", Serial, func() {
 			Expect(err).NotTo(HaveOccurred())
 			By("Verify all corresponding resources are deleted")
 			Eventually(framework.ValidateDeletion(client, ctx)).Should(Succeed())
+		})
+	})
+	Context("The validating webhook", func() {
+		It("should deny deletion of ClusterPodPlacementConfig if any PodPlacementConfig is deployed in the cluster", func() {
+			cppc := builder.NewClusterPodPlacementConfig().
+				WithName(common.SingletonResourceObjectName).
+				WithPlugins().
+				WithNodeAffinityScoring(true).
+				WithNodeAffinityScoringTerm(utils.ArchitectureAmd64, 0).
+				Build()
+			err := client.Create(ctx, cppc)
+			Expect(err).NotTo(HaveOccurred(), "The create ClusterPodPlacementConfig should succeed")
+			By("Create a PodPlacementConfig")
+			ppc := builder.NewPodPlacementConfig().
+				WithName("ppc").
+				WithNamespace("test-namespace").
+				WithPriority(common.Priority(50)).
+				Build()
+			err = client.Create(ctx, ppc)
+			Expect(err).NotTo(HaveOccurred(), "The create PodPlacementConfig should succeed")
+			By("Try to delete ClusterPodPlacementConfig")
+			err = client.Delete(ctx, cppc)
+			Expect(err).To(HaveOccurred(), "The deletion ClusterPodPlacementConfig should not be accepted")
+			By("Verify the error is 'invalid'")
+			Expect(errors.IsInvalid(err)).To(BeTrue(), "The deletion of ClusterPodPlacementConfig should not be accepted")
+			err = client.Delete(ctx, ppc)
+			Expect(err).To(HaveOccurred())
+			By("Try to delete ClusterPodPlacementConfig again")
+			err = client.Delete(ctx, cppc)
+			Expect(err).To(HaveOccurred(), "The deletion of ClusterPodPlacementConfig should succeed")
+		})
+		It("should deny namespaced podplacementconfig creation if clusterpodplacementconfig doesn't exist", func() {
+			cppc := &v1beta1.ClusterPodPlacementConfig{}
+			err := client.Get(ctx, runtimeclient.ObjectKey{
+				Name: common.SingletonResourceObjectName,
+			}, cppc)
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "The ClusterPodPlacementConfig should not exist")
+			By("Create a PodPlacementConfig")
+			ppc := builder.NewPodPlacementConfig().
+				WithName("ppc").
+				WithNamespace("test-namespace").
+				WithPlugins().
+				WithNodeAffinityScoring(true).
+				WithNodeAffinityScoringTerm(utils.ArchitectureAmd64, 0).
+				Build()
+			err = client.Create(ctx, ppc)
+			By(fmt.Sprintf("The error is: %+v", err))
+			By("Verify the PodPlacementConfig is not created")
+			Expect(err).To(HaveOccurred(), "The create PodPlacementConfig should not be accepted")
+			By("Verify the error is 'invalid'")
+			Expect(errors.IsInvalid(err)).To(BeTrue(), "The invalid PodPlacementConfig should not be accepted")
+		})
+		It("should deny namespaced podplacementconfig creation if there is pod placement config with the same priority", func() {
+			cppc := builder.NewClusterPodPlacementConfig().
+				WithName(common.SingletonResourceObjectName).
+				WithPlugins().
+				WithNodeAffinityScoring(true).
+				WithNodeAffinityScoringTerm(utils.ArchitectureAmd64, 0).
+				Build()
+			err := client.Create(ctx, cppc)
+			Expect(err).NotTo(HaveOccurred(), "The create ClusterPodPlacementConfig should succeed")
+			By("Create a PodPlacementConfig")
+			ppc := builder.NewPodPlacementConfig().
+				WithName("ppc1").
+				WithNamespace("test-namespace").
+				WithPriority(common.Priority(50)).
+				Build()
+			err = client.Create(ctx, ppc)
+			Expect(err).NotTo(HaveOccurred(), "The create PodPlacementConfig should succeed")
+			By("Create a PodPlacementConfig with the same priority")
+			ppc2 := builder.NewPodPlacementConfig().
+				WithName("ppc2").
+				WithNamespace("test-namespace").
+				WithPriority(common.Priority(50)).
+				Build()
+			err = client.Create(ctx, ppc2)
+			Expect(err).To(HaveOccurred(), "The create PodPlacementConfig should not be accepted")
+			By(fmt.Sprintf("The error is: %+v", err))
+			By("Verify the PodPlacementConfig is not created")
+			Expect(err).To(HaveOccurred(), "The create PodPlacementConfig should not be accepted")
+			By("Verify the error is 'invalid'")
+			Expect(errors.IsInvalid(err)).To(BeTrue(), "The invalid PodPlacementConfig should not be accepted")
 		})
 	})
 })

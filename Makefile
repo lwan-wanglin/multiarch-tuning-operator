@@ -404,3 +404,7 @@ clean:
 
 version:
 	VERSION=$(VERSION) ./hack/bump-version.sh
+
+.PHONY: verify-snapshots
+verify-snapshots:  ## Verify snapshots for given [SNAPSHOT=..] [VERSION=..]
+	./hack/check-snapshots.sh $(filter-out $@,$(MAKECMDGOALS))

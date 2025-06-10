@@ -177,6 +177,13 @@ func main() {
 	//	setupLog.Error(err, "unable to create controller", "controller", "ENoExecEvent")
 	//}
 
+	//if err = (&operator.PodPlacementConfigReconciler{
+	//	Client: mgr.GetClient(),
+	//	Scheme: mgr.GetScheme(),
+	//}).SetupWithManager(mgr); err != nil {
+	//	setupLog.Error(err, "unable to create controller", "controller", "PodPlacementConfig")
+	//	os.Exit(1)
+	//}
 	//+kubebuilder:scaffold:builder
 	must(mgr.AddHealthzCheck("healthz", healthz.Ping), "unable to set up health check")
 	must(mgr.AddReadyzCheck("readyz", healthz.Ping), "unable to set up ready check")
@@ -232,6 +239,8 @@ func RunOperator(mgr ctrl.Manager) {
 	}).SetupWithManager(mgr), unableToCreateController, controllerKey, "ClusterPodPlacementConfig")
 	must((&multiarchv1beta1.ClusterPodPlacementConfig{}).SetupWebhookWithManager(mgr), unableToCreateController,
 		controllerKey, "ClusterPodPlacementConfigConversionWebhook")
+	must((&multiarchv1beta1.PodPlacementConfig{}).SetupWebhookWithManager(mgr), unableToCreateController,
+		controllerKey, "PodPlacementConfigConversionWebhook")
 }
 
 func RunClusterPodPlacementConfigOperandControllers(mgr ctrl.Manager) {

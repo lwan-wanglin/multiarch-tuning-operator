@@ -232,6 +232,11 @@ func runManager() {
 		Recorder:      events.NewKubeRecorder(clientset.CoreV1().Events(utils.Namespace()), utils.OperatorName, ctrlref, clock.RealClock{}),
 	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
 
+	Expect((&PodPlacementConfigReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr)).NotTo(HaveOccurred())
+
 	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
 	Expect(err).NotTo(HaveOccurred())
 
